@@ -1,49 +1,49 @@
 from numpy import random
-from functools import partial
 
 class GeneticAlgorithm:
 
     """This Class handles all the optimisation for the Genetic Algorithm.
     """
 
-    def __init__(self, fitnessFunction, dataframe):
+    def __init__(self, fitnessFunction, dataframe, longOnly = False):
 
         # Number of individuals in our population
         self.populationSize = 1000
         # How much information can each parameter take
         self.nBits = 16
         # Number of populations to make
-        self.nGenerations = 10
+        self.nGenerations = 5
         # Chance of a child having atleast one different gene when compared to its parents
-        self.crossoverRate = 0.95
+        self.crossoverRate = 0.98
         # Bounds for our characteristics (weights in our case)
         self.maxNumber = 1.0
         self.bounds = [
             [-self.maxNumber, self.maxNumber] for ticker in dataframe.columns
         ]
-        self.mutatationRate = 1.0 / (float(self.nBits * len(self.bounds)))
+        self.mutatationRate = 1.0 / (float(len(self.bounds)))
 
         # Function that we want to optimise
         self.fitnessFunction = lambda individual: fitnessFunction(dataframe, individual)
 
         # Number of individuals in a cluster
-        self.randomParentSample = 50
+        self.randomParentSample = 25
 
         # Population ranges between all the pre-set bounds
         # Each individual in our population is a nBits x len(self.bounds) matrix where one parameter is encoded
         # into nBits and the same is done for the number of tickers in our portfolio dataframe
+
         self.population = [
-            random.randint(0, 2, self.nBits * len(self.bounds))
+            self.create_individual(longOnly)
             for _ in range(self.populationSize)
         ]
-        # Take the best individual with the best parameters to be the first one in our population initially
-        self.bestChild = 0
-
-        # Take the best current score to be the value of the fitness function with the first individual
-        self.bestScore = self.fitnessFunction(self.decode(self.population[0]))
-
 
     def evolution(self):
+
+        # Take the best individual with the best parameters to be the first one in our population initially
+        bestChild = 0
+
+        # Take the best current score to be the value of the fitness function with the first individual
+        bestScore = self.fitnessFunction(self.population[0])
 
         for generation in range(self.nGenerations):
 
@@ -51,11 +51,12 @@ class GeneticAlgorithm:
 
             # Create a list of decoded params so the matrix shape changes from nBits x tickers into 1 x tickers for
             # each individual in our population
-            decoded = [self.decode(candidate) for candidate in self.population]
+            # decoded = [self.decode(candidate) for candidate in self.population]
 
             # Score each individual set of parameters on our fitness function for the entire current population
-            scores = [self.fitnessFunction(candidate) for candidate in decoded]
-
+            scores = [self.fitnessFunction(candidate) for candidate in self.population]
+            # for candidate in self.population:
+            #     print(sum(candidate))
             # The size of the score array and the population should be the same
             assert len(scores) == len(self.population)
 
@@ -72,10 +73,10 @@ class GeneticAlgorithm:
             for individual in range(self.populationSize):
 
                 # Find the best parameters/genes that maximise our fitnessFunction
-                if scores[individual] > self.bestScore:
-                    self.bestScore, self.bestChild = scores[individual], self.population[individual]
+                if scores[individual] > bestScore:
+                    bestScore, bestChild = scores[individual].copy(), self.population[individual].copy()
 
-                    print(f"-- generation {generation+1}, New best fitness score: {self.bestScore: %.3f}")
+                    print(f"-- generation {generation+1}, New best fitness score: {bestScore}")
 
             for parentIndex in range(0, self.populationSize - 1, 2):
 
@@ -93,12 +94,18 @@ class GeneticAlgorithm:
             # Previous generation of population is replaced by the children
             self.population = children
 
-        return self.decode(self.bestChild)
+            for individual in range(len(self.population)):
+                if sum(self.population[individual]) != 1:
+                    self.population[individual] = self.population[individual] / sum(self.population[individual])
+
+        return bestChild
 
     def mutation(self, individual):
 
-        for gene in range(self.nBits):
+        for gene in range(len(individual)):
+
             if random.rand() < self.mutatationRate:
+
                 individual[gene] = 1 - individual[gene]
 
     def crossover(self, parents):
@@ -141,25 +148,15 @@ class GeneticAlgorithm:
         # Returns the individual with the best score amongst the chosen sample
         return self.population[selected_index]
 
-    def decode(self, individual):
+    def create_individual(self, longOnly):
 
-        decoded = []
-        largest = 2 ** self.nBits
+        minVal = -1
+        maxVal = 1
 
-        for i in range(len(self.bounds)):
+        individual = random.rand(len(self.bounds))
+        individual = individual / sum(individual)
 
-            # extract the substring
-            start, end = i * self.nBits, (i * self.nBits) + self.nBits
-            substring = individual[start:end]
-            # convert bitstring to a string of chars
-            chars = "".join([str(character) for character in substring])
-            # convert string to integer
-            integer = int(chars, 2)
-            # scale integer to desired range
-            value = self.bounds[i][0] + (integer / largest) * (
-                self.bounds[i][1] - self.bounds[i][0]
-            )
-            # store
-            decoded.append(value)
+        if not longOnly:
+            individual = minVal + (individual * (maxVal - minVal))
 
-        return decoded
+        return individual
