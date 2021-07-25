@@ -37,7 +37,7 @@ class GeneticAlgorithm:
             for _ in range(self.populationSize)
         ]
 
-    def evolution(self):
+    def evolution(self, verbose = False):
 
         # Take the best individual with the best parameters to be the first one in our population initially
         bestChild = 0
@@ -47,7 +47,8 @@ class GeneticAlgorithm:
 
         for generation in range(self.nGenerations):
 
-            print("\n---Generation {} has begun----\n".format(generation + 1))
+            if verbose:
+                print("\n---Generation {} has begun----\n".format(generation + 1))
 
             # Create a list of decoded params so the matrix shape changes from nBits x tickers into 1 x tickers for
             # each individual in our population
@@ -55,8 +56,7 @@ class GeneticAlgorithm:
 
             # Score each individual set of parameters on our fitness function for the entire current population
             scores = [self.fitnessFunction(candidate) for candidate in self.population]
-            # for candidate in self.population:
-            #     print(sum(candidate))
+
             # The size of the score array and the population should be the same
             assert len(scores) == len(self.population)
 
@@ -76,7 +76,8 @@ class GeneticAlgorithm:
                 if scores[individual] > bestScore:
                     bestScore, bestChild = scores[individual].copy(), self.population[individual].copy()
 
-                    print(f"-- generation {generation+1}, New best fitness score: {bestScore}")
+                    if verbose:
+                        print(f"-- generation {generation+1}, New best fitness score: {bestScore}")
 
             for parentIndex in range(0, self.populationSize - 1, 2):
 
