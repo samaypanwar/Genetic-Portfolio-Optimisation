@@ -103,10 +103,8 @@ class GeneticAlgorithm:
 
     def mutation(self, individual):
 
-        for gene in range(len(individual)):
-
-            if random.rand() < self.mutatationRate:
-
+        if random.rand() < self.mutatationRate:
+            for gene in range(len(individual)):
                 individual[gene] = 1 - individual[gene]
 
     def crossover(self, parents):
